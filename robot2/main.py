@@ -1,6 +1,6 @@
 import serial
 import time
-from lidar import record
+from lidar import record, stop_record
 
 
 # Pi connects to arduino controller via usb port
@@ -37,6 +37,11 @@ try:
         
         if cmd == 'q':
             break
+
+        if cmd == 'w':
+            record()
+        if cmd == 'e':
+            stop_record()
         
         if cmd in ['f', 'b', 'l', 'r', 's', 't']:
             ser.write(cmd.encode())  # Send the character as bytes
