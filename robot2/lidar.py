@@ -116,40 +116,38 @@ def read():
     return lidar_data
 
 def record():
-    try:
-        print(f"Writing LiDAR data to {raw_output_file}")
-        print(f"Writing LiDAR data to {cartesian_output_file}")
-        print("Press Ctrl+C to stop...")
+    print(f"Writing LiDAR data to {raw_output_file}")
+    print(f"Writing LiDAR data to {cartesian_output_file}")
+    print("Press Ctrl+C to stop...")
+    
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Write header to file
+    with open(raw_output_file, 'w') as f:
+        f.write("# Raw LiDAR Data Collection Started: " + date_time + "\n")
+        f.write("# Format: timestamp,angle,distance,intensity,x,y\n")
+    # Write header to file
+    with open(cartesian_output_file, 'w') as f:
+        f.write("# Cartesain LiDAR Data Collection Started: " + date_time + "\n")
+        f.write("# Format: timestamp,angle,distance,intensity,x,y\n")
+    
+    scan_count = 0
+    while True:
+        scan_count += 1
+        current_time = time.time()
+        lidar_read = read()
+        cartesian_points = read_to_cartesian(lidar_read)
         
-        date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # Write header to file
-        with open(raw_output_file, 'w') as f:
-            f.write("# Raw LiDAR Data Collection Started: " + date_time + "\n")
-            f.write("# Format: timestamp,angle,distance,intensity,x,y\n")
-        # Write header to file
-        with open(cartesian_output_file, 'w') as f:
-            f.write("# Cartesain LiDAR Data Collection Started: " + date_time + "\n")
-            f.write("# Format: timestamp,angle,distance,intensity,x,y\n")
+        if len(cartesian_points) > 0:
+        # Only print summary to console to avoid flooding
+            print(f"Scan #{scan_count}: Got {len(cartesian_points)} points, saving to {cartesian_output_file}")
         
-        scan_count = 0
-        while True:
-            scan_count += 1
-            current_time = time.time()
-            lidar_read = read()
-            cartesian_points = read_to_cartesian(lidar_read)
-            
-            if len(cartesian_points) > 0:
-            # Only print summary to console to avoid flooding
-                print(f"Scan #{scan_count}: Got {len(cartesian_points)} points, saving to {cartesian_output_file}")
-            
-            # Append data to the file
-            with open(cartesian_output_file, 'a') as f:
-                for angle, distance, intensity, x, y in cartesian_points:
-                    # Write a formatted line for each point
-                    f.write(f"{current_time:.3f},{angle:.2f},{distance},{intensity},{x:.1f},{y:.1f}\n")
-            # Optional: Add a delay between scans if needed
-            # time.sleep(0.1)
-            
-    finally:
-        print(f"Data collection stopped. Data saved to {raw_output_file}")
-        ser.close()
+        # Append data to the file
+        with open(cartesian_output_file, 'a') as f:
+            for angle, distance, intensity, x, y in cartesian_points:
+                # Write a formatted line for each point
+                f.write(f"{current_time:.3f},{angle:.2f},{distance},{intensity},{x:.1f},{y:.1f}\n")
+        # Optional: Add a delay between scans if needed
+        # time.sleep(0.1)
+def stop_record():
+    print(f"Data collection stopped. Data saved to {raw_output_file}")
+    ser.close()
