@@ -56,11 +56,41 @@ ser = serial.Serial(
 # 1711212151.755,322.76,387,128,303.7,-239.7
 # 1711212151.755,325.34,412,112,336.7,-236.6
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-output_file = f"lidar_data_{timestamp}.txt"
+cartesian_output_file = f"cartesian_lidar_data_{timestamp}.txt"
+raw_output_file = f"raw_lidar_data_{timestamp}.txt"
 
 
-# The read function will filter out points outside a certain angle range, which equates to robots field of vision in the front
-def read_lidar_data():
+# The read function will read lidar_read packets into an array of cartesian points
+def read_to_cartesian(lidar_read):
+
+    # Extract start and end angles (in 0.01 degree increments)
+    start_angle = struct.unpack('<H', lidar_read.data[2:4])[0] / 100.0
+    end_angle = struct.unpack('<H', lidar_read.data[4+lidar_read.point_count*3:6+lidar_read.point_count*3])[0] / 100.0
+    
+    # Process each measurement point
+    points = []
+    if lidar_read.point_count == 1: # avoid divide by zero error
+        return points
+        
+    for i in range(lidar_read.point_count):
+        offset = 4 + i*3
+        distance = struct.unpack('<H', lidar_read.data[offset:offset+2])[0] # in mm
+        intensity = lidar_read.data[offset+2] # signal strength
+        
+        # Calculate angle for this point using linear interpolation
+        angle = start_angle + (end_angle - start_angle) * (i / (lidar_read.point_count-1))
+        
+        # Convert polar coordinates to Cartesian (x,y) in mm
+     
+        angle_rad = math.radians(angle)
+        x = distance * math.cos(angle_rad)
+        y = distance * math.sin(angle_rad)
+        points.append((angle, distance, intensity, x, y))
+    
+    return points # [ (angle, distance, intensity, x, y), (angle, distance, intensity, x, y), ...]
+
+# reads and returns lidar_read sensor packet bytes into object
+def read():
     # Loop and Wait until we read a packet header (0x54)
     while True:
         if ser.read(1) == b'\x54':
@@ -76,60 +106,50 @@ def read_lidar_data():
     # Extract speed (degrees/sec)
     speed = struct.unpack('<H', data[0:2])[0]
     
-    # Extract start and end angles (in 0.01 degree increments)
-    start_angle = struct.unpack('<H', data[2:4])[0] / 100.0
-    end_angle = struct.unpack('<H', data[4+point_count*3:6+point_count*3])[0] / 100.0
-    
-    # Process each measurement point
-    points = []
-    if point_count == 1: # avoid divide by zero error
-        return points
-        
-    for i in range(point_count):
-        offset = 4 + i*3
-        distance = struct.unpack('<H', data[offset:offset+2])[0] # in mm
-        intensity = data[offset+2] # signal strength
-        
-        # Calculate angle for this point using linear interpolation
-        angle = start_angle + (end_angle - start_angle) * (i / (point_count-1))
-        
-        # Convert polar coordinates to Cartesian (x,y) in mm
-        if distance > 0 and distance < 500: # filter distance less than 500mm
-            angle_rad = math.radians(angle)
-            if angle > 300 or angle < 60: # filter out all angles but a 120degree slice in front of sensor
-                x = distance * math.cos(angle_rad)
-                y = distance * math.sin(angle_rad)
-                points.append((angle, distance, intensity, x, y))
-    
-    return points # [ (angle, distance, intensity, x, y), (angle, distance, intensity, x, y), ...]
+    lidar_data = {
+        point_count: point_count,
+        ver_len: ver_len,
+        data: data,
+        speed: speed
+    }
 
-try:
-    print(f"Writing LiDAR data to {output_file}")
-    print("Press Ctrl+C to stop...")
-    
-    # Write header to file
-    with open(output_file, 'w') as f:
-        f.write("# LiDAR Data Collection Started: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
-        f.write("# Format: timestamp,angle,distance,intensity,x,y\n")
-    
-    scan_count = 0
-    while True:
-        scan_count += 1
-        current_time = time.time()
-        points = read_lidar_data()
+    return lidar_data
+
+def record():
+    try:
+        print(f"Writing LiDAR data to {raw_output_file}")
+        print(f"Writing LiDAR data to {cartesian_output_file}")
+        print("Press Ctrl+C to stop...")
         
-        # Only print summary to console to avoid flooding
-        print(f"Scan #{scan_count}: Got {len(points)} points, saving to {output_file}")
+        date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Write header to file
+        with open(raw_output_file, 'w') as f:
+            f.write("# Raw LiDAR Data Collection Started: " + date_time + "\n")
+            f.write("# Format: timestamp,angle,distance,intensity,x,y\n")
+        # Write header to file
+        with open(cartesian_output_file, 'w') as f:
+            f.write("# Cartesain LiDAR Data Collection Started: " + date_time + "\n")
+            f.write("# Format: timestamp,angle,distance,intensity,x,y\n")
         
-        # Append data to the file
-        with open(output_file, 'a') as f:
-            for angle, distance, intensity, x, y in points:
-                # Write a formatted line for each point
-                f.write(f"{current_time:.3f},{angle:.2f},{distance},{intensity},{x:.1f},{y:.1f}\n")
-        
-        # Optional: Add a delay between scans if needed
-        # time.sleep(0.1)
-        
-finally:
-    print(f"Data collection stopped. Data saved to {output_file}")
-    ser.close()
+        scan_count = 0
+        while True:
+            scan_count += 1
+            current_time = time.time()
+            lidar_read = read()
+            cartesian_points = read_to_cartesian(lidar_read)
+            
+            if len(cartesian_points) > 0:
+            # Only print summary to console to avoid flooding
+                print(f"Scan #{scan_count}: Got {len(cartesian_points)} points, saving to {cartesian_output_file}")
+            
+            # Append data to the file
+            with open(cartesian_output_file, 'a') as f:
+                for angle, distance, intensity, x, y in cartesian_points:
+                    # Write a formatted line for each point
+                    f.write(f"{current_time:.3f},{angle:.2f},{distance},{intensity},{x:.1f},{y:.1f}\n")
+            # Optional: Add a delay between scans if needed
+            # time.sleep(0.1)
+            
+    finally:
+        print(f"Data collection stopped. Data saved to {raw_output_file}")
+        ser.close()

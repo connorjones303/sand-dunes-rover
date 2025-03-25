@@ -20,7 +20,7 @@ Servo servo_channel_1;
 Servo servo_channel_2;
 
 // Speed settings (0-255)
-const int DEFAULT_SPEED = 50;
+const int DEFAULT_SPEED = 150;
 const int TURN_SPEED = 40;
 
 // servo baseline 'straight angle" value

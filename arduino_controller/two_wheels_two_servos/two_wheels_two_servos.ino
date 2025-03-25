@@ -25,9 +25,9 @@ const int TURN_SPEED = 30;
 
 // servo baseline 'straight angle" value
 // note: this will change based on how we attach physical motor housing to servo horn
-const int SERVO_STRAIGHT = 150;
+const int SERVO_STRAIGHT = 45;
 // servo turn margin angle
-const int SERVO_MARGIN = 20;
+const int SERVO_MARGIN = 45;
 
 const byte MOTOR_FADE_RATE = 10;
 

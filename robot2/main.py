@@ -1,5 +1,6 @@
 import serial
 import time
+from lidar import record
 
 
 # Pi connects to arduino controller via usb port
@@ -27,6 +28,8 @@ try:
     print("  r - Right")
     print("  s - Stop")
     print("  t - Brake")
+    print("  w - Write LiDar Data")
+    print("  e - End Writing LiDar")
     print("  q - Quit")
     
     while True:
