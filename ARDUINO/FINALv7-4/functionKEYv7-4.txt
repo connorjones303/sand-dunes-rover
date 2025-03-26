@@ -1,0 +1,18 @@
+skidL – skid steer left (in-place turn) [DC only]
+skidR – skid steer right (in-place turn) [DC only]
+
+driveF – drive forward
+driveB – drive backward
+driveL –  servo-assisted turn left (no differential drive)
+driveR – servo-assisted turn right (no differential drive)
+DdriveL –  servo-assisted turn left (with slight differential drive)
+DriveR – servo-assisted turn right (with slight differential drive)
+
+pivotL - turns servos into a circle and skids left
+pivotR - turns servos into a circle and skids right
+
+steerL – servo ONLY turn left (no drive)
+steerR – servo ONLY turn right (no drive)
+steerZ - zero the servos
+S - stop motors 
+C - show commands
