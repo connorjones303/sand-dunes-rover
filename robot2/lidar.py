@@ -107,10 +107,10 @@ def read():
     speed = struct.unpack('<H', data[0:2])[0]
     
     lidar_data = {
-        point_count: point_count,
-        ver_len: ver_len,
-        data: data,
-        speed: speed
+        'point_count': point_count,
+        'ver_len': ver_len,
+        'data': data,
+        'speed': speed
     }
 
     return lidar_data

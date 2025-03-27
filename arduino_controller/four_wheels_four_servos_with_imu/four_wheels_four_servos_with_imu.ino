@@ -1,8 +1,12 @@
 #include <SoftPWM.h>
 #include <Servo.h>
+#include <SoftI2CMaster.h>
+
+// Define I2C pins
+const int SDA_PIN = 12;   // data
+const int SCL_PIN = 11;   // clock
 
 // Define pins we want to use for PWM, 
-
 const int SERVO_CHANNEL_1  = 7;
 const int SERVO_CHANNEL_2 = 6;
 
@@ -13,7 +17,6 @@ const int MOTOR_CHANNEL_1_IN2 = 4;
 // motor channel 2
 const int MOTOR_CHANNEL_2_IN1 = 3;
 const int MOTOR_CHANNEL_2_IN2 = 2;
-
 
 // define servo class for using servos
 Servo servo_channel_1;
@@ -32,9 +35,15 @@ const int SERVO_MARGIN = 45;
 
 const byte MOTOR_FADE_RATE = 10;
 
+// Initialize I2C pins, using library to assign non default I2C pins
+SoftI2CMaster i2c(SDA_PIN, SCL_PIN);
+
 void setup()
   {
     // ==== Pin setup ====
+    // Initialize the I2C 
+    i2c.begin();
+
     // Initialize the SoftPWM library for manual PWM assignment (don't need to include servo pins)
     SoftPWMBegin();
     // Set up all motor control pins with SoftPWM
