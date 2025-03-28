@@ -46,7 +46,7 @@ try:
             print(f"Sent command: {cmd}")
             current_imu_data = sensor.get_sensor_data()
             print(current_imu_data) # print sensor data after motor command
-            MPU6050.detect_significant_change(prev_imu_data, current_imu_data)
+            print(MPU6050.detect_significant_change(prev_imu_data, current_imu_data))
             time.sleep(0.1)  # Small delay between commands
         else:
             print("Invalid command")
