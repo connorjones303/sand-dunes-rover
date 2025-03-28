@@ -1,0 +1,12 @@
+[Unit]
+Description=Rover Navigation Command Hub
+After=network.target
+
+[Service]
+User=pi
+ExecStart=/usr/bin/python3 /home/pi/rover_serial.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
