@@ -155,7 +155,8 @@ class MPU6050:
             print(f"Error getting sensor data: {str(e)}")
             # Return zeros if there's an error
             return SensorData(0, 0, 0, 0, 0, 0)
-        
+
+    @staticmethod   
     def detect_significant_change(current_data, previous_data, thresholds=None):
       """
       Detect if a significant change has occurred in any dimension of the sensor data.
