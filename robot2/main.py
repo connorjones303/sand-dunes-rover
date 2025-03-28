@@ -40,12 +40,14 @@ try:
             break
         
         if cmd in ['f', 'b', 'l', 'r', 's', 't']:
-            print(sensor.get_sensor_data()) # print sensor data before motor command
+            prev_imu_data = sensor.get_sensor_data()
+            print(prev_imu_data) # print sensor data before motor command
             ser.write(cmd.encode())  # Send the character as bytes
             print(f"Sent command: {cmd}")
+            current_imu_data = sensor.get_sensor_data()
+            print(current_imu_data) # print sensor data after motor command
+            sensor.detect_significant_change(prev_imu_data, current_imu_data)
             time.sleep(0.1)  # Small delay between commands
-            print(sensor.get_sensor_data()) # print sensor data after motor command
-            time.sleep(0.1)
         else:
             print("Invalid command")
 

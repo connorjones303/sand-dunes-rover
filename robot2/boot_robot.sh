@@ -3,5 +3,5 @@
 # Activate the virtual environment in current directory
 source venv/bin/activate
 
-# Run main.py
+# Run robot program
 python main.py
