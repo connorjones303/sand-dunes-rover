@@ -155,6 +155,55 @@ class MPU6050:
             print(f"Error getting sensor data: {str(e)}")
             # Return zeros if there's an error
             return SensorData(0, 0, 0, 0, 0, 0)
+        
+    def detect_significant_change(current_data, previous_data, thresholds=None):
+      """
+      Detect if a significant change has occurred in any dimension of the sensor data.
+      
+      Parameters:
+      current_data (SensorData): Current sensor reading
+      previous_data (SensorData): Previous sensor reading to compare against
+      thresholds (dict, optional): Dictionary of thresholds for each dimension. 
+                                If None, a default threshold of 0.3 is used for all dimensions.
+      
+      Returns:
+      tuple: (bool, dict) - Whether a significant change was detected and an object with relative changes
+      """
+      # Set default thresholds if none provided
+      if thresholds is None:
+          thresholds = {
+              'accel_x': 0.3,
+              'accel_y': 0.3,
+              'accel_z': 0.3,
+              'gyro_x': 0.3,
+              'gyro_y': 0.3,
+              'gyro_z': 0.3
+          }
+      
+      # Calculate relative changes (preserving sign)
+      relative_changes = {
+          'accel_x': current_data.accel_x - previous_data.accel_x,
+          'accel_y': current_data.accel_y - previous_data.accel_y,
+          'accel_z': current_data.accel_z - previous_data.accel_z,
+          'gyro_x': current_data.gyro_x - previous_data.gyro_x,
+          'gyro_y': current_data.gyro_y - previous_data.gyro_y,
+          'gyro_z': current_data.gyro_z - previous_data.gyro_z
+      }
+      
+      # Check if changes are significant (based on absolute value)
+      significant_changes = {
+          dimension: abs(change) > thresholds.get(dimension, 0.3) 
+          for dimension, change in relative_changes.items()
+      }
+      
+      # Determine if any dimension had significant change
+      significant_change_detected = any(significant_changes.values())
+      
+      # Return the detection result and the relative changes
+      return significant_change_detected, {
+          'relative_changes': relative_changes,
+          'significant_dimensions': {k: v for k, v in significant_changes.items() if v}
+      }
     
     def close(self):
         """Close the I2C bus"""

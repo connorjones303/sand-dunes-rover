@@ -5,7 +5,7 @@ from imu import MPU6050
 
 # connect pi to arduino as serial connection
 ser = serial.Serial(
-    port='/dev/ttyS0',
+    port='/dev/ttyACM0',
     baudrate=9600,
     parity=serial.PARITY_NONE,
     stopbits=serial.STOPBITS_ONE,
