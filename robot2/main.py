@@ -1,12 +1,9 @@
 import serial
 import time
-from lidar import record, stop_record
+from imu import MPU6050
 
 
-# Pi connects to arduino controller via usb port
-
-# Configuring the serial port
-# '/dev/ttyACM0' is the port on the rasp pi 4 when connecting arduino uno r3 usb port
+# connect pi to arduino as serial connection
 ser = serial.Serial(
     port='/dev/ttyS0',
     baudrate=9600,
@@ -17,6 +14,10 @@ ser = serial.Serial(
 )
 
 print("UART Controller initialized")
+
+# init imu sensor
+sensor = MPU6050(bus_num=1)
+sensor.initialize()
 
 try:
     print("\nArduino Robot Controller")
@@ -37,16 +38,14 @@ try:
         
         if cmd == 'q':
             break
-
-        if cmd == 'w':
-            record()
-        if cmd == 'e':
-            stop_record()
         
         if cmd in ['f', 'b', 'l', 'r', 's', 't']:
+            print(sensor.get_sensor_data()) # print sensor data before motor command
             ser.write(cmd.encode())  # Send the character as bytes
             print(f"Sent command: {cmd}")
             time.sleep(0.1)  # Small delay between commands
+            print(sensor.get_sensor_data()) # print sensor data after motor command
+            time.sleep(0.1)
         else:
             print("Invalid command")
 

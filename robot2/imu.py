@@ -186,5 +186,5 @@ def main():
             print("I2C bus closed")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
