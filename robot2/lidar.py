@@ -5,12 +5,25 @@ import time
 import os
 from datetime import datetime
 
+from logger import logger # Nathan W: Implement logging (logs and prints to console in one statement)
+
+# Nathan W: Set up variables as it was done in other files
+PORT = '/dev/ttyUSB0', # or 'COM4' on Windows
+BAUD_RATE = 230400
+TIMEOUT = 1
+
 # Open serial connection (replace with your port)
-ser = serial.Serial(
-    port='/dev/ttyUSB0', # or 'COM4' on Windows
-    baudrate=230400,
-    timeout=1
-)
+def initialize_serial(port=PORT, baudrate=BAUD_RATE, timeout=TIMEOUT):  # Nathan W: Put this block of code in a function like other files
+    try: # Nathan W: Added a try/catch for serial connection to exit gracefully
+        ser = serial.Serial(
+            port=port,
+            baudrate=baudrate,
+            timeout=timeout
+        )
+        return ser
+    except Exception as e:
+        logger.critical(f"Error establishing serial connection: {e}")
+        exit(1)
 
 # FieldSize (Bytes)Description
 # Header        1 Byte     Always 0x54 (start of packet)
@@ -55,81 +68,97 @@ ser = serial.Serial(
 # 1711212151.755,319.12,298,135,222.8,-198.2
 # 1711212151.755,322.76,387,128,303.7,-239.7
 # 1711212151.755,325.34,412,112,336.7,-236.6
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-output_file = f"lidar_data_{timestamp}.txt"
 
 
 # The read function will filter out points outside a certain angle range, which equates to robots field of vision in the front
-def read_lidar_data():
+def read_lidar_data(ser):
     # Loop and Wait until we read a packet header (0x54)
     while True:
         if ser.read(1) == b'\x54':
             break
-    
+
     # Read packet type and point count, tells us how many points will be in the packet
-    ver_len = ord(ser.read(1))
-    point_count = ver_len & 0x1F # Lower 5 bits indicate point count
-    
+    point_count = ord(ser.read(1)) & 0x1F # Lower 5 bits indicate point count [Nathan W: (removed ver_len since it was only used for point_count)]
+
     # Read remaining packet data
     data = ser.read(6 + point_count*3 + 4) # Speed(2) + StartAngle(2) + Data(n*3) + EndAngle(2) + Timestamp(2) + CRC(1)
-    
+
     # Extract speed (degrees/sec)
     speed = struct.unpack('<H', data[0:2])[0]
-    
+
     # Extract start and end angles (in 0.01 degree increments)
     start_angle = struct.unpack('<H', data[2:4])[0] / 100.0
     end_angle = struct.unpack('<H', data[4+point_count*3:6+point_count*3])[0] / 100.0
-    
+
     # Process each measurement point
     points = []
     if point_count == 1: # avoid divide by zero error
         return points
-        
+
     for i in range(point_count):
         offset = 4 + i*3
         distance = struct.unpack('<H', data[offset:offset+2])[0] # in mm
         intensity = data[offset+2] # signal strength
-        
+
         # Calculate angle for this point using linear interpolation
         angle = start_angle + (end_angle - start_angle) * (i / (point_count-1))
-        
+
         # Convert polar coordinates to Cartesian (x,y) in mm
-        if distance > 0 and distance < 500: # filter distance less than 500mm
+        if 0 < distance < 500: # filter distance less than 500mm [Nathan W: (simplified)]
             angle_rad = math.radians(angle)
             if angle > 300 or angle < 60: # filter out all angles but a 120degree slice in front of sensor
                 x = distance * math.cos(angle_rad)
                 y = distance * math.sin(angle_rad)
                 points.append((angle, distance, intensity, x, y))
-    
+
     return points # [ (angle, distance, intensity, x, y), (angle, distance, intensity, x, y), ...]
 
-try:
-    print(f"Writing LiDAR data to {output_file}")
-    print("Press Ctrl+C to stop...")
-    
-    # Write header to file
-    with open(output_file, 'w') as f:
-        f.write("# LiDAR Data Collection Started: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
-        f.write("# Format: timestamp,angle,distance,intensity,x,y\n")
-    
-    scan_count = 0
-    while True:
-        scan_count += 1
-        current_time = time.time()
-        points = read_lidar_data()
-        
-        # Only print summary to console to avoid flooding
-        print(f"Scan #{scan_count}: Got {len(points)} points, saving to {output_file}")
-        
-        # Append data to the file
-        with open(output_file, 'a') as f:
-            for angle, distance, intensity, x, y in points:
-                # Write a formatted line for each point
-                f.write(f"{current_time:.3f},{angle:.2f},{distance},{intensity},{x:.1f},{y:.1f}\n")
-        
-        # Optional: Add a delay between scans if needed
-        # time.sleep(0.1)
-        
-finally:
-    print(f"Data collection stopped. Data saved to {output_file}")
+def write_lidar_data(points, ser): # Nathan W: Put all the logic to write LiDAR data into a function
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_file = f"lidar_data_{timestamp}.txt"
+
+    try:
+        logger.info(f"Writing LiDAR data to {output_file}")
+        print("Press Ctrl+C to stop...")
+
+        # Write header to file
+        try: # Nathan W: Added a try/except for opening the file
+            with open(output_file, 'w') as f:
+                f.write("# LiDAR Data Collection Started: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
+                f.write("# Format: timestamp,angle,distance,intensity,x,y\n")
+        except Exception as e:
+            logger.error(f"Error writing LiDAR data to {output_file}: {e}")
+
+        scan_count = 0
+        while True:
+            scan_count += 1
+            current_time = time.time()
+            points = read_lidar_data(ser)
+
+            # Only print summary to console to avoid flooding
+            logger.info(f"Scan #{scan_count}: Got {len(points)} points, saving to {output_file}")
+
+            # Append data to the file
+            try: # Nathan W: Added a try/except for opening the file
+                with open(output_file, 'a') as f:
+                    for angle, distance, intensity, x, y in points:
+                        # Write a formatted line for each point
+                        f.write(f"{current_time:.3f},{angle:.2f},{distance},{intensity},{x:.1f},{y:.1f}\n")
+            except Exception as e:
+                logger.error(f"Error writing LiDAR data: {e}")
+
+            # Optional: Add a delay between scans if needed
+            # time.sleep(0.1)
+
+    finally:
+        logger.info(f"Data collection stopped. Data saved to {output_file}")
+
+
+def main(): # Nathan W: Added main method like other test files
+    ser = initialize_serial()
+    points = read_lidar_data(ser)
+    write_lidar_data(points, ser)
     ser.close()
+
+if __name__ == "__main__":
+    main()
