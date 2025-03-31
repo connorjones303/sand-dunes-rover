@@ -1,6 +1,8 @@
 import smbus # smbus-cffi is the package install name
 import time
 
+from robot2.logger import logger # Nathan W: Implement logging (logs and prints to console in one statement)
+
 # MPU-6050 Registers
 PWR_MGMT_1 = 0x6B
 ACCEL_XOUT_H = 0x3B
@@ -69,24 +71,31 @@ def get_sensor_data(bus, addr):
 
 def main():
     # Initialize I2C bus (bus 1 on newer Raspberry Pi models)
-    bus = smbus.SMBus(1)
+    try: # Nathan W: Added a try/except for initializing I2C bus
+        bus = smbus.SMBus(1)
+    except Exception as e:
+        logger.critical(f"Failed to connect to MPU-6050: {e}")
+        exit(1)
 
     # Wake up MPU-6050 (set PWR_MGMT_1 to 0)
-    bus.write_byte_data(MPU_ADDRESS, PWR_MGMT_1, 0)
+    try: # Nathan W: Added a try/except for writing to I2C Bus
+        bus.write_byte_data(MPU_ADDRESS, PWR_MGMT_1, 0)
+    except Exception as e:
+        logger.error(f"Failed to write to MPU-6050: {e}")
 
-    print("Reading MPU-6050 data. Press Ctrl+C to stop...")
+    logger.info("Reading MPU-6050 data. Press Ctrl+C to stop...")
     try:
         while True:
             # Get sensor data as an object
             sensor_data = get_sensor_data(bus, MPU_ADDRESS)
             
             # Print to terminal
-            print(sensor_data)
+            logger.info(sensor_data)
             
             # Small delay to avoid overwhelming the terminal
             time.sleep(0.1)
     except KeyboardInterrupt:
-        print("\nStopped by user.")
+        logger.info("\nStopped by user.")
     finally:
         bus.close()
 
