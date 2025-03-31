@@ -7,21 +7,25 @@ import time
 from matplotlib.animation import FuncAnimation
 from collections import deque
 
-#config
-usb_port = '/dev/tty.usbserial-0001'
+from robot2.logger import logger # Nathan W: Implement logging (logs and prints to console in one statement)
 
-# Open serial connection (replace with your port)
-def initialize_serial(port=usb_port, baudrate=230400):
+# Nathan W: Set up variables as it was done in other files
+PORT = '/dev/tty.usbserial-0001' # (replace with your port)
+BAUD_RATE = 230400
+TIMEOUT = 1
+
+# Open serial connection
+def initialize_serial(port=PORT, baudrate=BAUD_RATE, timeout=TIMEOUT): # Nathan W: Added default value for timeout
     try:
         ser = serial.Serial(
             port=port,
             baudrate=baudrate,
-            timeout=1
+            timeout=timeout
         )
         return ser
     except serial.SerialException as e:
-        print(f"Error opening serial port: {e}")
-        return None
+        logger.critical(f"Error opening serial port: {e}")
+        return None # Nathan W: Is there a reason this would not exit?
 
 def read_lidar_data(ser):
     # Loop and Wait until we read a packet header (0x54)
@@ -66,9 +70,9 @@ def read_lidar_data(ser):
     
     return points
 
-def take_snapshot(num_frames=100, port=usb_port):
+def take_snapshot(num_frames=100): # Nathan W: removed port parameter (not needed)
     """Collect several frames of LiDAR data and display them as a static snapshot"""
-    ser = initialize_serial(port)
+    ser = initialize_serial() # Nathan W: Removed port argument (same as default)
     if not ser:
         return
     
@@ -79,7 +83,7 @@ def take_snapshot(num_frames=100, port=usb_port):
         for _ in range(num_frames):
             points = read_lidar_data(ser)
             all_points.extend(points)
-            print(f"Collected {len(points)} points in this frame")
+            logger.info(f"Collected {len(points)} points in this frame")
     
     finally:
         ser.close()
@@ -110,9 +114,9 @@ def take_snapshot(num_frames=100, port=usb_port):
     
     plt.show()
 
-def continuous_view(max_frames=100, port=usb_port):
+def continuous_view(max_frames=100): # Nathan W: Removed port parameter (not needed)
     """Display LiDAR data in a continuously updating view"""
-    ser = initialize_serial(port)
+    ser = initialize_serial() # Nathan W: Removed port argument (same as default)
     if not ser:
         return
     
@@ -165,7 +169,7 @@ def continuous_view(max_frames=100, port=usb_port):
                 
                 return scatter,
         except Exception as e:
-            print(f"Error in update: {e}")
+            logger.error(f"Error in update: {e}")
         
         return scatter,
     
@@ -177,10 +181,10 @@ def continuous_view(max_frames=100, port=usb_port):
         ser.close()
 
 def main():
-    import argparse
+    import argparse # Nathan W: Is there a reason this import is done at the function level
     
     parser = argparse.ArgumentParser(description='LiDAR Visualization Tool')
-    parser.add_argument('--port', type=str, default=usb_port, help='Serial port for LiDAR')
+    parser.add_argument('--port', type=str, default=PORT, help='Serial port for LiDAR') # Nathan W: Could be removed I believe
     parser.add_argument('--mode', type=str, choices=['snapshot', 'continuous'], default='continuous',
                         help='Visualization mode: snapshot or continuous')
     parser.add_argument('--frames', type=int, default=10, help='Number of frames to capture for snapshot mode')
@@ -188,9 +192,9 @@ def main():
     args = parser.parse_args()
     
     if args.mode == 'snapshot':
-        take_snapshot(num_frames=args.frames, port=args.port)
+        take_snapshot(num_frames=args.frames) # Nathan W: Removed port argument (same as default)
     else:
-        continuous_view(port=args.port)
+        continuous_view() # Nathan W: Removed port argument (same as default)
 
 if __name__ == "__main__":
     main()
